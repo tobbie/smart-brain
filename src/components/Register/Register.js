@@ -1,4 +1,6 @@
 import React from 'react';
+import APP_CONSTANTS from '../common/constants'
+ 
 
 class Register extends React.Component {
   constructor(props) {
@@ -23,7 +25,7 @@ class Register extends React.Component {
   }
 
   onSubmitSignIn = () => {
-    fetch('http://localhost:3000/register', {
+    fetch( APP_CONSTANTS.baseApiUrl +`/register`, {
       method: 'post',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({

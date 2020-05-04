@@ -7,7 +7,9 @@ import Register from './components/Register/Register';
 import Logo from './components/Logo/Logo';
 import ImageLinkForm from './components/ImageLinkForm/ImageLinkForm';
 import Rank from './components/Rank/Rank';
+import APP_CONSTANTS from './components/common/constants'
 import './App.css';
+
 
 const particlesOptions = {
   particles: {
@@ -24,7 +26,7 @@ const particlesOptions = {
 const initialState = {
   input: '',
   imageUrl: '',
-  box: {},
+  faces : [],
   route: 'signin',
   isSignedIn: false,
   user: {
@@ -52,21 +54,41 @@ class App extends Component {
     }})
   }
 
-  calculateFaceLocation = (data) => {
-    const clarifaiFace = data.outputs[0].data.regions[0].region_info.bounding_box;
+  
+
+  calculateLocationOfFaces = (data) => {
+    let clarifaiFaces  = [];
+    clarifaiFaces =  data.outputs[0].data.regions;
     const image = document.getElementById('inputimage');
     const width = Number(image.width);
     const height = Number(image.height);
-    return {
-      leftCol: clarifaiFace.left_col * width,
-      topRow: clarifaiFace.top_row * height,
-      rightCol: width - (clarifaiFace.right_col * width),
-      bottomRow: height - (clarifaiFace.bottom_row * height)
+
+    let faces = clarifaiFaces.map(this.buildFaceList(width, height));
+    console.log(faces);
+    return faces;
+    
+  }
+  
+  buildFaceList = (width, height) =>{
+    
+    return function(faceRegion){
+      const face = faceRegion.region_info.bounding_box;
+     
+      return{
+        leftCol: face.left_col * width,
+        topRow: face.top_row * height,
+        rightCol: width - (face.right_col * width),
+        bottomRow: height - (face.bottom_row * height)
+      }
+
     }
+   
   }
 
-  displayFaceBox = (box) => {
-    this.setState({box: box});
+  
+
+  displayFaces = (faces) => {
+    this.setState({faces: faces});
   }
 
   onInputChange = (event) => {
@@ -75,7 +97,7 @@ class App extends Component {
 
   onButtonSubmit = () => {
     this.setState({imageUrl: this.state.input});
-      fetch('http://localhost:3000/imageurl', {
+      fetch(APP_CONSTANTS.baseApiUrl +'/imageurl', {
         method: 'post',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
@@ -85,7 +107,7 @@ class App extends Component {
       .then(response => response.json())
       .then(response => {
         if (response) {
-          fetch('http://localhost:3000/image', {
+          fetch(APP_CONSTANTS.baseApiUrl +'/image', {
             method: 'put',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
@@ -99,7 +121,8 @@ class App extends Component {
             .catch(console.log)
 
         }
-        this.displayFaceBox(this.calculateFaceLocation(response))
+        
+        this.displayFaces(this.calculateLocationOfFaces(response))
       })
       .catch(err => console.log(err));
   }
@@ -114,7 +137,7 @@ class App extends Component {
   }
 
   render() {
-    const { isSignedIn, imageUrl, route, box } = this.state;
+    const { isSignedIn, imageUrl, route, faces } = this.state;
     return (
       <div className="App">
          <Particles className='particles'
@@ -132,7 +155,7 @@ class App extends Component {
                 onInputChange={this.onInputChange}
                 onButtonSubmit={this.onButtonSubmit}
               />
-              <FaceRecognition box={box} imageUrl={imageUrl} />
+              <FaceRecognition imageUrl={imageUrl} faces = {faces} />
             </div>
           : (
              route === 'signin'
