@@ -1,5 +1,5 @@
 import React from 'react';
-import APP_CONSTANTS from '../common/constants'
+
  
 
 class Register extends React.Component {
@@ -25,7 +25,7 @@ class Register extends React.Component {
   }
 
   onSubmitSignIn = () => {
-    fetch( APP_CONSTANTS.baseApiUrl +`/register`, {
+    fetch(process.env.REACT_APP_API_URL +`/register`, {
       method: 'post',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
@@ -35,9 +35,10 @@ class Register extends React.Component {
       })
     })
       .then(response => response.json())
-      .then(user => {
-        if (user.id) {
-          this.props.loadUser(user)
+      .then(data => {
+        if (data.user) {
+          this.props.loadUser(data.user)
+          window.sessionStorage.setItem('token', data.token)
           this.props.onRouteChange('home');
         }
       })
