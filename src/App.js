@@ -9,7 +9,9 @@ import ImageLinkForm from './components/ImageLinkForm/ImageLinkForm';
 import Rank from './components/Rank/Rank';
 import Modal from './components/Modal/Modal'
 import Profile from './components/Profile/Profile'
-import APP_CONSTANTS from './components/common/constants'
+import { httpRequest, httpHeaders } from './util/httpClient'
+import httpMethods from './util/httpMethods'
+
 import './App.css';
 
 
@@ -49,13 +51,34 @@ class App extends Component {
     this.state = initialState;
   }
 
+  componentDidMount(){
+    const token = window.sessionStorage.getItem('token');
+    if(token){
+      httpRequest(process.env.REACT_APP_API_URL +'/signin', httpMethods.POST, httpHeaders(token))
+        .then((data) => {
+          if(data && data.id){
+             httpRequest(process.env.REACT_APP_API_URL +`/profile/${data.id}`, httpMethods.GET, httpHeaders(token))
+             .then(user => {
+                if(user){ 
+                  this.loadUser(user)
+                  this.onRouteChange('home')
+                }
+          })
+        }
+      }).catch(error => console.log(error))
+    }
+   
+  }
+
   loadUser = (data) => {
     this.setState({user: {
       id: data.id,
       name: data.name,
       email: data.email,
       entries: data.entries,
-      joined: data.joined
+      joined: data.joined,
+      age: data.age,
+      pet: data.pet
     }})
   }
 
@@ -102,31 +125,18 @@ class App extends Component {
 
   onButtonSubmit = () => {
     this.setState({imageUrl: this.state.input});
-      fetch(APP_CONSTANTS.baseApiUrl +'/imageurl', {
-        method: 'post',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          input: this.state.input
-        })
-      })
-      .then(response => response.json())
+    const token = window.sessionStorage.getItem('token')
+      
+      httpRequest(process.env.REACT_APP_API_URL +'/imageurl', httpMethods.POST, httpHeaders(token),
+       {input : this.state.input})
       .then(response => {
         if (response) {
-          fetch(APP_CONSTANTS.baseApiUrl +'/image', {
-            method: 'put',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-              id: this.state.user.id
-            })
-          })
-            .then(response => response.json())
+          httpRequest(process.env.REACT_APP_API_URL +'/image', httpMethods.PUT, httpHeaders(token), {id: this.state.user.id})
             .then(count => {
               this.setState(Object.assign(this.state.user, { entries: count}))
             })
-            .catch(console.log)
-
+            .catch(err => console.log(err))
         }
-        
         this.displayFaces(this.calculateLocationOfFaces(response))
       })
       .catch(err => console.log(err));
@@ -134,6 +144,7 @@ class App extends Component {
 
   onRouteChange = (route) => {
     if (route === 'signout') {
+     window.sessionStorage.removeItem('token');
      return this.setState(initialState)
     } else if (route === 'home') {
       this.setState({isSignedIn: true})
@@ -150,6 +161,7 @@ class App extends Component {
 
   render() {
     const { isSignedIn, imageUrl, route, faces, isProfileOpen, user } = this.state;
+    
     return (
       <div className="App">
          <Particles className='particles'
@@ -159,7 +171,7 @@ class App extends Component {
         toggleModal={this.toggleModal} />
         { isProfileOpen && 
            <Modal>
-                <Profile isProfileOpen={isProfileOpen} toggleModal={this.toggleModal}  user={user}/>
+                <Profile isProfileOpen={isProfileOpen} toggleModal={this.toggleModal}  user={user} loadUser = {this.loadUser}/>
             </Modal>
         }
         { route === 'home'

@@ -1,5 +1,4 @@
 import React from 'react';
-import APP_CONSTANTS from '../common/constants'
 import "./Signin.css"
 
 class Signin extends React.Component {
@@ -19,8 +18,13 @@ class Signin extends React.Component {
     this.setState({signInPassword: event.target.value})
   }
 
+  saveAuthTokenInSession = (token) => {
+    window.sessionStorage.setItem('token', token);
+  }
+
   onSubmitSignIn = () => {
-    fetch(APP_CONSTANTS.baseApiUrl +'/signin', {
+    
+    fetch( process.env.REACT_APP_API_URL +'/signin', {
       method: 'post',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
@@ -28,14 +32,32 @@ class Signin extends React.Component {
         password: this.state.signInPassword
       })
     })
-      .then(response => response.json())
-      .then(user => {
-        if (user.id) {
-          this.props.loadUser(user)
-          this.props.onRouteChange('home');
-        }
+      .then((response) => response.json())
+      .then((data) => {
+         if (data.userId) {
+          this.saveAuthTokenInSession(data.token)
+          fetch(process.env.REACT_APP_API_URL +`/profile/${data.userId}`, {
+            method : 'get',
+            headers: {
+              'Content-Type' : 'application/json',
+              'Authorization': data.token
+            }
+          })
+          .then( resp => resp.json())
+          .then(user => {
+            if(user){
+              this.props.loadUser(user)
+              this.props.onRouteChange('home')
+            }
+          }).catch(err => console.log(err))
+          
+         }
       })
-  }
+    .catch((error)=>{
+        console.log(error)
+      })
+    }
+  
 
   render() {
     const { onRouteChange } = this.props;
@@ -83,5 +105,6 @@ class Signin extends React.Component {
     );
   }
 }
+
 
 export default Signin;
